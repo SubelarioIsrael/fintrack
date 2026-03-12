@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from supabase import create_client
 from datetime import datetime
 import os
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 load_dotenv()
 
@@ -572,5 +574,18 @@ async def undo(ctx):
         print(e)
         await ctx.send("Failed to delete the transaction.")
 
+
+# Minimal HTTP server so Render's free Web Service tier keeps the bot alive
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+    def log_message(self, format, *args):
+        pass  # suppress access logs
+
+port = int(os.getenv("PORT", 8080))
+server = HTTPServer(("0.0.0.0", port), HealthHandler)
+threading.Thread(target=server.serve_forever, daemon=True).start()
 
 client.run(os.getenv('BOT_TOKEN'))
