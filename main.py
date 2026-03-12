@@ -1015,6 +1015,15 @@ async def on_ready():
         process_recurring.start()
 
 
+@client.command(name="sync")
+@commands.is_owner()
+async def sync_commands(ctx: commands.Context):
+    """Owner-only: instantly sync slash commands to this guild."""
+    client.tree.copy_global_to(guild=ctx.guild)
+    synced = await client.tree.sync(guild=ctx.guild)
+    await ctx.send(f"✅ Synced {len(synced)} command(s) to **{ctx.guild.name}**.", delete_after=10)
+
+
 @tasks.loop(hours=24)
 async def process_recurring():
     """Auto-log recurring transactions that are due."""
