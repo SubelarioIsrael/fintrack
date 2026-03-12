@@ -317,12 +317,22 @@ class ContributeGoalModal(discord.ui.Modal, title="Contribute to a Goal"):
             row = resp.data[0]
             new_amount = float(row["current_amount"]) + amount_val
             supabase.table("goals").update({"current_amount": new_amount}).eq("id", row["id"]).execute()
+            # Deduct from balance by recording it as an expense transaction
+            supabase.table("transactions").insert({
+                "user_id": user_id,
+                "type": "expense",
+                "amount": amount_val,
+                "category": "Savings",
+                "description": f"Contribution to goal: {self.goal_name.value}",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
             target = float(row["target_amount"])
             bar = progress_bar(new_amount, target)
             embed = discord.Embed(title="💰 Contribution Added ✅", color=discord.Color.teal())
             embed.add_field(name="Goal", value=self.goal_name.value, inline=True)
             embed.add_field(name="Contributed", value=f"₱{amount_val:.2f}", inline=True)
             embed.add_field(name="Progress", value=f"{bar}  ₱{new_amount:.2f} / ₱{target:.2f}", inline=False)
+            embed.add_field(name="Balance Impact", value=f"-₱{amount_val:.2f} deducted from your spendable balance", inline=False)
             if new_amount >= target:
                 embed.add_field(name="🎉", value="Goal reached!", inline=False)
             await interaction.followup.send(embed=embed, ephemeral=True)
