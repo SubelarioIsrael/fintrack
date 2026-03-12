@@ -117,6 +117,7 @@ class ExpenseModal(discord.ui.Modal, title="Log an Expense"):
             "amount": amount_val,
             "category": self.category.value,
             "description": self.description.value,
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
         try:
@@ -167,6 +168,7 @@ class IncomeModal(discord.ui.Modal, title="Log Income"):
             "amount": amount_val,
             "category": self.category.value,
             "description": self.description.value,
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
         try:
@@ -763,6 +765,7 @@ async def process_recurring():
                     "amount": row["amount"],
                     "category": row["category"],
                     "description": row["description"],
+                    "created_at": datetime.now(timezone.utc).isoformat(),
                 }).execute()
                 supabase.table("recurring").update({"last_run": today.isoformat()}).eq("id", row["id"]).execute()
                 print(f"Auto-logged recurring '{row['description']}' for user {row['user_id']}")
