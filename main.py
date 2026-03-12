@@ -109,6 +109,7 @@ class ExpenseModal(discord.ui.Modal, title="Log an Expense"):
             )
             return
 
+        await interaction.response.defer()
         user_id = str(interaction.user.id)
         data = {
             "user_id": user_id,
@@ -124,11 +125,11 @@ class ExpenseModal(discord.ui.Modal, title="Log an Expense"):
             embed.add_field(name="Amount", value=f"₱{amount_val:.2f}", inline=True)
             embed.add_field(name="Category", value=self.category.value, inline=True)
             embed.add_field(name="Description", value=self.description.value, inline=False)
-            await interaction.response.send_message(embed=embed)
+            await interaction.followup.send(embed=embed)
             await send_budget_alert(interaction, user_id, self.category.value)
         except Exception as e:
             print(e)
-            await interaction.response.send_message("Failed to record expense.", ephemeral=True)
+            await interaction.followup.send("Failed to record expense.", ephemeral=True)
 
 
 class IncomeModal(discord.ui.Modal, title="Log Income"):
@@ -158,6 +159,7 @@ class IncomeModal(discord.ui.Modal, title="Log Income"):
             )
             return
 
+        await interaction.response.defer()
         user_id = str(interaction.user.id)
         data = {
             "user_id": user_id,
@@ -173,10 +175,10 @@ class IncomeModal(discord.ui.Modal, title="Log Income"):
             embed.add_field(name="Amount", value=f"₱{amount_val:.2f}", inline=True)
             embed.add_field(name="Category", value=self.category.value, inline=True)
             embed.add_field(name="Description", value=self.description.value, inline=False)
-            await interaction.response.send_message(embed=embed)
+            await interaction.followup.send(embed=embed)
         except Exception as e:
             print(e)
-            await interaction.response.send_message("Failed to record income.", ephemeral=True)
+            await interaction.followup.send("Failed to record income.", ephemeral=True)
 
 
 class SetBudgetModal(discord.ui.Modal, title="Set Monthly Budget"):
@@ -199,6 +201,7 @@ class SetBudgetModal(discord.ui.Modal, title="Set Monthly Budget"):
                 "Invalid amount — please enter a number like `3000.00`.", ephemeral=True
             )
             return
+        await interaction.response.defer(ephemeral=True)
         user_id = str(interaction.user.id)
         try:
             existing = (
@@ -219,10 +222,10 @@ class SetBudgetModal(discord.ui.Modal, title="Set Monthly Budget"):
             embed = discord.Embed(title="Budget Set ✅", color=discord.Color.gold())
             embed.add_field(name="Category", value=self.category.value, inline=True)
             embed.add_field(name="Monthly Limit", value=f"₱{limit_val:.2f}", inline=True)
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
         except Exception as e:
             print(e)
-            await interaction.response.send_message("Failed to set budget.", ephemeral=True)
+            await interaction.followup.send("Failed to set budget.", ephemeral=True)
 
 
 class SetGoalModal(discord.ui.Modal, title="Set a Savings Goal"):
@@ -250,6 +253,7 @@ class SetGoalModal(discord.ui.Modal, title="Set a Savings Goal"):
                 "Invalid amount — please enter a number like `10000.00`.", ephemeral=True
             )
             return
+        await interaction.response.defer(ephemeral=True)
         deadline_val = self.deadline.value.strip() or None
         user_id = str(interaction.user.id)
         try:
@@ -265,10 +269,10 @@ class SetGoalModal(discord.ui.Modal, title="Set a Savings Goal"):
             embed.add_field(name="Target", value=f"₱{target_val:.2f}", inline=True)
             if deadline_val:
                 embed.add_field(name="Deadline", value=deadline_val, inline=True)
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
         except Exception as e:
             print(e)
-            await interaction.response.send_message("Failed to create goal.", ephemeral=True)
+            await interaction.followup.send("Failed to create goal.", ephemeral=True)
 
 
 class ContributeGoalModal(discord.ui.Modal, title="Contribute to a Goal"):
@@ -291,6 +295,7 @@ class ContributeGoalModal(discord.ui.Modal, title="Contribute to a Goal"):
                 "Invalid amount — please enter a number like `500.00`.", ephemeral=True
             )
             return
+        await interaction.response.defer(ephemeral=True)
         user_id = str(interaction.user.id)
         try:
             resp = (
@@ -302,7 +307,7 @@ class ContributeGoalModal(discord.ui.Modal, title="Contribute to a Goal"):
                 .execute()
             )
             if not resp.data:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"No goal named **{self.goal_name.value}** found. Check your goals with `/goals`.",
                     ephemeral=True,
                 )
@@ -318,10 +323,10 @@ class ContributeGoalModal(discord.ui.Modal, title="Contribute to a Goal"):
             embed.add_field(name="Progress", value=f"{bar}  ₱{new_amount:.2f} / ₱{target:.2f}", inline=False)
             if new_amount >= target:
                 embed.add_field(name="🎉", value="Goal reached!", inline=False)
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
         except Exception as e:
             print(e)
-            await interaction.response.send_message("Failed to update goal.", ephemeral=True)
+            await interaction.followup.send("Failed to update goal.", ephemeral=True)
 
 
 class SetRecurringModal(discord.ui.Modal, title="Add Recurring Transaction"):
@@ -365,6 +370,7 @@ class SetRecurringModal(discord.ui.Modal, title="Add Recurring Transaction"):
         except ValueError:
             await interaction.response.send_message("Invalid amount.", ephemeral=True)
             return
+        await interaction.response.defer(ephemeral=True)
         user_id = str(interaction.user.id)
         try:
             supabase.table("recurring").insert({
@@ -381,10 +387,10 @@ class SetRecurringModal(discord.ui.Modal, title="Add Recurring Transaction"):
             embed.add_field(name="Amount", value=f"₱{amount_val:.2f}", inline=True)
             embed.add_field(name="Category", value=self.category.value, inline=True)
             embed.add_field(name="Frequency", value=freq_val.capitalize(), inline=True)
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
         except Exception as e:
             print(e)
-            await interaction.response.send_message("Failed to set recurring transaction.", ephemeral=True)
+            await interaction.followup.send("Failed to set recurring transaction.", ephemeral=True)
 
 
 # ---------------------------------------------------------------------------
@@ -403,6 +409,7 @@ class DeleteSelect(discord.ui.Select):
         super().__init__(placeholder="Pick a transaction to delete…", options=options, min_values=1, max_values=1)
 
     async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         tx_id = self.values[0]
         row = next((r for r in self.rows if r["id"] == tx_id), None)
         try:
@@ -412,10 +419,10 @@ class DeleteSelect(discord.ui.Select):
             embed.add_field(name="Amount", value=f"{sign}₱{float(row['amount']):.2f}", inline=True)
             embed.add_field(name="Category", value=row["category"], inline=True)
             embed.add_field(name="Description", value=row["description"] or "—", inline=False)
-            await interaction.response.edit_message(embed=embed, view=None)
+            await interaction.edit_original_response(embed=embed, view=None)
         except Exception as e:
             print(e)
-            await interaction.response.send_message("Failed to delete transaction.", ephemeral=True)
+            await interaction.followup.send("Failed to delete transaction.", ephemeral=True)
 
 
 class DeleteView(discord.ui.View):
@@ -449,13 +456,13 @@ class MenuView(discord.ui.View):
         await _send_budgets(interaction, ephemeral=True)
 
 # ---------------------------------------------------------------------------
-# Shared logic (commands + buttons both call these)
+# Shared logic (slash commands + menu buttons both call these)
 # ---------------------------------------------------------------------------
 
-async def _send_balance(ctx_or_interaction, ephemeral: bool = False):
-    """Monthly balance summary. Works for ctx (commands) and Interaction (buttons)."""
-    is_ix = isinstance(ctx_or_interaction, discord.Interaction)
-    user_id = str(ctx_or_interaction.user.id if is_ix else ctx_or_interaction.author.id)
+async def _send_balance(interaction: discord.Interaction, ephemeral: bool = False):
+    """Monthly balance summary."""
+    await interaction.response.defer(ephemeral=ephemeral)
+    user_id = str(interaction.user.id)
     ms = month_start()
     try:
         income_resp = (
@@ -476,11 +483,7 @@ async def _send_balance(ctx_or_interaction, ephemeral: bool = False):
         )
     except Exception as e:
         print(e)
-        msg = "Failed to fetch financial data."
-        if is_ix:
-            await ctx_or_interaction.response.send_message(msg, ephemeral=True)
-        else:
-            await ctx_or_interaction.send(msg)
+        await interaction.followup.send("Failed to fetch financial data.", ephemeral=True)
         return
 
     total_income = sum(float(r["amount"]) for r in (income_resp.data or []))
@@ -492,16 +495,13 @@ async def _send_balance(ctx_or_interaction, ephemeral: bool = False):
     embed.add_field(name="Income", value=f"₱{total_income:.2f}", inline=True)
     embed.add_field(name="Expenses", value=f"₱{total_expense:.2f}", inline=True)
     embed.add_field(name="Balance", value=f"₱{balance_val:.2f}", inline=True)
-    if is_ix:
-        await ctx_or_interaction.response.send_message(embed=embed, ephemeral=ephemeral)
-    else:
-        await ctx_or_interaction.send(embed=embed)
+    await interaction.followup.send(embed=embed, ephemeral=ephemeral)
 
 
-async def _send_history(ctx_or_interaction, ephemeral: bool = False):
+async def _send_history(interaction: discord.Interaction, ephemeral: bool = False):
     """Last 10 transactions."""
-    is_ix = isinstance(ctx_or_interaction, discord.Interaction)
-    user_id = str(ctx_or_interaction.user.id if is_ix else ctx_or_interaction.author.id)
+    await interaction.response.defer(ephemeral=ephemeral)
+    user_id = str(interaction.user.id)
     try:
         resp = (
             supabase.table("transactions")
@@ -513,20 +513,12 @@ async def _send_history(ctx_or_interaction, ephemeral: bool = False):
         )
     except Exception as e:
         print(e)
-        msg = "Failed to fetch transaction history."
-        if is_ix:
-            await ctx_or_interaction.response.send_message(msg, ephemeral=True)
-        else:
-            await ctx_or_interaction.send(msg)
+        await interaction.followup.send("Failed to fetch transaction history.", ephemeral=True)
         return
 
     rows = resp.data or []
     if not rows:
-        msg = "No transactions found."
-        if is_ix:
-            await ctx_or_interaction.response.send_message(msg, ephemeral=ephemeral)
-        else:
-            await ctx_or_interaction.send(msg)
+        await interaction.followup.send("No transactions found.", ephemeral=ephemeral)
         return
 
     embed = discord.Embed(title="📋 Last 10 Transactions", color=discord.Color.blurple())
@@ -539,16 +531,13 @@ async def _send_history(ctx_or_interaction, ephemeral: bool = False):
             value=f"{sign}₱{float(row['amount']):.2f} · {row['description']}",
             inline=False,
         )
-    if is_ix:
-        await ctx_or_interaction.response.send_message(embed=embed, ephemeral=ephemeral)
-    else:
-        await ctx_or_interaction.send(embed=embed)
+    await interaction.followup.send(embed=embed, ephemeral=ephemeral)
 
 
-async def _send_budgets(ctx_or_interaction, ephemeral: bool = False):
+async def _send_budgets(interaction: discord.Interaction, ephemeral: bool = False):
     """Budget progress bars for the current month."""
-    is_ix = isinstance(ctx_or_interaction, discord.Interaction)
-    user_id = str(ctx_or_interaction.user.id if is_ix else ctx_or_interaction.author.id)
+    await interaction.response.defer(ephemeral=ephemeral)
+    user_id = str(interaction.user.id)
     ms = month_start()
     try:
         budget_resp = (
@@ -559,20 +548,12 @@ async def _send_budgets(ctx_or_interaction, ephemeral: bool = False):
         )
     except Exception as e:
         print(e)
-        msg = "Failed to fetch budgets."
-        if is_ix:
-            await ctx_or_interaction.response.send_message(msg, ephemeral=True)
-        else:
-            await ctx_or_interaction.send(msg)
+        await interaction.followup.send("Failed to fetch budgets.", ephemeral=True)
         return
 
     budgets = budget_resp.data or []
     if not budgets:
-        msg = "No budgets set. Use `/setbudget` to create one."
-        if is_ix:
-            await ctx_or_interaction.response.send_message(msg, ephemeral=ephemeral)
-        else:
-            await ctx_or_interaction.send(msg)
+        await interaction.followup.send("No budgets set. Use `/setbudget` to create one.", ephemeral=ephemeral)
         return
 
     now = datetime.now(timezone.utc)
@@ -605,16 +586,13 @@ async def _send_budgets(ctx_or_interaction, ephemeral: bool = False):
             value=f"{bar}  {status}",
             inline=False,
         )
-    if is_ix:
-        await ctx_or_interaction.response.send_message(embed=embed, ephemeral=ephemeral)
-    else:
-        await ctx_or_interaction.send(embed=embed)
+    await interaction.followup.send(embed=embed, ephemeral=ephemeral)
 
 
-async def _send_breakdown(ctx_or_interaction, ephemeral: bool = False):
+async def _send_breakdown(interaction: discord.Interaction, ephemeral: bool = False):
     """Category % breakdown of expenses this month."""
-    is_ix = isinstance(ctx_or_interaction, discord.Interaction)
-    user_id = str(ctx_or_interaction.user.id if is_ix else ctx_or_interaction.author.id)
+    await interaction.response.defer(ephemeral=ephemeral)
+    user_id = str(interaction.user.id)
     ms = month_start()
     try:
         resp = (
@@ -627,19 +605,11 @@ async def _send_breakdown(ctx_or_interaction, ephemeral: bool = False):
         )
     except Exception as e:
         print(e)
-        msg = "Failed to fetch expense data."
-        if is_ix:
-            await ctx_or_interaction.response.send_message(msg, ephemeral=True)
-        else:
-            await ctx_or_interaction.send(msg)
+        await interaction.followup.send("Failed to fetch expense data.", ephemeral=True)
         return
     rows = resp.data or []
     if not rows:
-        msg = "No expenses this month yet."
-        if is_ix:
-            await ctx_or_interaction.response.send_message(msg, ephemeral=ephemeral)
-        else:
-            await ctx_or_interaction.send(msg)
+        await interaction.followup.send("No expenses this month yet.", ephemeral=ephemeral)
         return
     totals: dict = {}
     for row in rows:
@@ -653,16 +623,13 @@ async def _send_breakdown(ctx_or_interaction, ephemeral: bool = False):
         bar = progress_bar(amt, grand_total)
         embed.add_field(name=f"{cat}  ₱{amt:.2f} ({pct:.0f}%)", value=bar, inline=False)
     embed.set_footer(text=f"Total: ₱{grand_total:.2f}")
-    if is_ix:
-        await ctx_or_interaction.response.send_message(embed=embed, ephemeral=ephemeral)
-    else:
-        await ctx_or_interaction.send(embed=embed)
+    await interaction.followup.send(embed=embed, ephemeral=ephemeral)
 
 
-async def _send_insights(ctx_or_interaction, ephemeral: bool = False):
+async def _send_insights(interaction: discord.Interaction, ephemeral: bool = False):
     """Compare this month vs last month spending by category."""
-    is_ix = isinstance(ctx_or_interaction, discord.Interaction)
-    user_id = str(ctx_or_interaction.user.id if is_ix else ctx_or_interaction.author.id)
+    await interaction.response.defer(ephemeral=ephemeral)
+    user_id = str(interaction.user.id)
     ms = month_start()
     lms = last_month_start()
     try:
@@ -685,11 +652,7 @@ async def _send_insights(ctx_or_interaction, ephemeral: bool = False):
         )
     except Exception as e:
         print(e)
-        msg = "Failed to fetch insight data."
-        if is_ix:
-            await ctx_or_interaction.response.send_message(msg, ephemeral=True)
-        else:
-            await ctx_or_interaction.send(msg)
+        await interaction.followup.send("Failed to fetch insight data.", ephemeral=True)
         return
 
     def tally(rows):
@@ -702,11 +665,7 @@ async def _send_insights(ctx_or_interaction, ephemeral: bool = False):
     last_month = tally(last_resp.data or [])
     all_cats = sorted(set(this_month) | set(last_month))
     if not all_cats:
-        msg = "Not enough data to generate insights yet."
-        if is_ix:
-            await ctx_or_interaction.response.send_message(msg, ephemeral=ephemeral)
-        else:
-            await ctx_or_interaction.send(msg)
+        await interaction.followup.send("Not enough data to generate insights yet.", ephemeral=ephemeral)
         return
     now = datetime.now(timezone.utc)
     embed = discord.Embed(
@@ -724,16 +683,13 @@ async def _send_insights(ctx_or_interaction, ephemeral: bool = False):
             arrow = "🔺" if diff > 0 else ("🔻" if diff < 0 else "➡️")
             diff_str = f"₱{this:.2f} vs ₱{last:.2f}  {arrow} {pct:+.0f}%"
         embed.add_field(name=cat, value=diff_str, inline=False)
-    if is_ix:
-        await ctx_or_interaction.response.send_message(embed=embed, ephemeral=ephemeral)
-    else:
-        await ctx_or_interaction.send(embed=embed)
+    await interaction.followup.send(embed=embed, ephemeral=ephemeral)
 
 
-async def _send_goals(ctx_or_interaction, ephemeral: bool = False):
+async def _send_goals(interaction: discord.Interaction, ephemeral: bool = False):
     """Show all savings goals with progress bars."""
-    is_ix = isinstance(ctx_or_interaction, discord.Interaction)
-    user_id = str(ctx_or_interaction.user.id if is_ix else ctx_or_interaction.author.id)
+    await interaction.response.defer(ephemeral=ephemeral)
+    user_id = str(interaction.user.id)
     try:
         resp = (
             supabase.table("goals")
@@ -743,19 +699,11 @@ async def _send_goals(ctx_or_interaction, ephemeral: bool = False):
         )
     except Exception as e:
         print(e)
-        msg = "Failed to fetch goals."
-        if is_ix:
-            await ctx_or_interaction.response.send_message(msg, ephemeral=True)
-        else:
-            await ctx_or_interaction.send(msg)
+        await interaction.followup.send("Failed to fetch goals.", ephemeral=True)
         return
     goals = resp.data or []
     if not goals:
-        msg = "No goals set. Use `/setgoal` to create one."
-        if is_ix:
-            await ctx_or_interaction.response.send_message(msg, ephemeral=ephemeral)
-        else:
-            await ctx_or_interaction.send(msg)
+        await interaction.followup.send("No goals set. Use `/setgoal` to create one.", ephemeral=ephemeral)
         return
     embed = discord.Embed(title="🏆 Savings Goals", color=discord.Color.teal())
     for g in goals:
@@ -765,10 +713,7 @@ async def _send_goals(ctx_or_interaction, ephemeral: bool = False):
         deadline_str = f" · Due {g['deadline']}" if g.get("deadline") else ""
         status = "✅ Complete!" if current >= target else f"₱{current:.2f} / ₱{target:.2f}{deadline_str}"
         embed.add_field(name=g["name"], value=f"{bar}  {status}", inline=False)
-    if is_ix:
-        await ctx_or_interaction.response.send_message(embed=embed, ephemeral=ephemeral)
-    else:
-        await ctx_or_interaction.send(embed=embed)
+    await interaction.followup.send(embed=embed, ephemeral=ephemeral)
 
 
 # ---------------------------------------------------------------------------
@@ -922,6 +867,7 @@ async def insights(interaction: discord.Interaction):
 
 @client.tree.command(name="delete", description="Delete a specific transaction via dropdown.")
 async def delete_transaction(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
     user_id = str(interaction.user.id)
     try:
         resp = (
@@ -934,22 +880,23 @@ async def delete_transaction(interaction: discord.Interaction):
         )
     except Exception as e:
         print(e)
-        await interaction.response.send_message("Failed to fetch your transactions.", ephemeral=True)
+        await interaction.followup.send("Failed to fetch your transactions.", ephemeral=True)
         return
     rows = resp.data or []
     if not rows:
-        await interaction.response.send_message("You have no transactions to delete.", ephemeral=True)
+        await interaction.followup.send("You have no transactions to delete.", ephemeral=True)
         return
     embed = discord.Embed(
         title="🗑️ Delete a Transaction",
         description="Select a transaction from the dropdown below:",
         color=discord.Color.orange(),
     )
-    await interaction.response.send_message(embed=embed, view=DeleteView(rows), ephemeral=True)
+    await interaction.followup.send(embed=embed, view=DeleteView(rows), ephemeral=True)
 
 
 @client.tree.command(name="export", description="Export all transactions as a CSV to your DMs.")
 async def export_transactions(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
     user_id = str(interaction.user.id)
     try:
         resp = (
@@ -961,11 +908,11 @@ async def export_transactions(interaction: discord.Interaction):
         )
     except Exception as e:
         print(e)
-        await interaction.response.send_message("Failed to fetch your transactions.", ephemeral=True)
+        await interaction.followup.send("Failed to fetch your transactions.", ephemeral=True)
         return
     rows = resp.data or []
     if not rows:
-        await interaction.response.send_message("No transactions to export.", ephemeral=True)
+        await interaction.followup.send("No transactions to export.", ephemeral=True)
         return
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=["date", "type", "amount", "category", "description"])
@@ -980,7 +927,6 @@ async def export_transactions(interaction: discord.Interaction):
         })
     output.seek(0)
     file = discord.File(fp=io.BytesIO(output.getvalue().encode()), filename="transactions.csv")
-    await interaction.response.defer(ephemeral=True)
     try:
         await interaction.user.send("📎 Here's your transaction export:", file=file)
         await interaction.followup.send("✅ Sent your export to your DMs!", ephemeral=True)
@@ -1010,6 +956,7 @@ async def setrecurring(interaction: discord.Interaction):
 
 @client.tree.command(name="undo", description="Delete your most recent transaction.")
 async def undo(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
     user_id = str(interaction.user.id)
     try:
         resp = (
@@ -1022,11 +969,11 @@ async def undo(interaction: discord.Interaction):
         )
     except Exception as e:
         print(e)
-        await interaction.response.send_message("Failed to fetch your last transaction.", ephemeral=True)
+        await interaction.followup.send("Failed to fetch your last transaction.", ephemeral=True)
         return
 
     if not resp.data:
-        await interaction.response.send_message("You have no transactions to undo.", ephemeral=True)
+        await interaction.followup.send("You have no transactions to undo.", ephemeral=True)
         return
 
     row = resp.data[0]
@@ -1038,10 +985,10 @@ async def undo(interaction: discord.Interaction):
         embed.add_field(name="Amount", value=f"{sign}₱{float(row['amount']):.2f}", inline=True)
         embed.add_field(name="Category", value=row["category"], inline=True)
         embed.add_field(name="Description", value=row["description"], inline=False)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
     except Exception as e:
         print(e)
-        await interaction.response.send_message("Failed to delete the transaction.", ephemeral=True)
+        await interaction.followup.send("Failed to delete the transaction.", ephemeral=True)
 
 
 # Minimal HTTP server so Render's free Web Service tier keeps the bot alive
