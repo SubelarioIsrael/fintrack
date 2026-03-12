@@ -405,7 +405,8 @@ class DeleteSelect(discord.ui.Select):
         options = []
         for row in rows:
             sign = "+" if row["type"] == "income" else "-"
-            label = f"{row['created_at'][:10]} {row['category']} {sign}₱{float(row['amount']):.2f}"
+            date_prefix = row["created_at"][:10] if row["created_at"] else "Unknown"
+            label = f"{date_prefix} {row['category']} {sign}₱{float(row['amount']):.2f}"
             desc = (row["description"] or "")[:50]
             options.append(discord.SelectOption(label=label[:100], value=row["id"], description=desc))
         super().__init__(placeholder="Pick a transaction to delete…", options=options, min_values=1, max_values=1)
@@ -527,7 +528,7 @@ async def _send_history(interaction: discord.Interaction, ephemeral: bool = Fals
     for row in rows:
         sign = "+" if row["type"] == "income" else "-"
         icon = "🟢" if row["type"] == "income" else "🔴"
-        date_str = row["created_at"][:10]
+        date_str = row["created_at"][:10] if row["created_at"] else "Unknown"
         embed.add_field(
             name=f"{icon} {date_str} — {row['category']}",
             value=f"{sign}₱{float(row['amount']):.2f} · {row['description']}",
@@ -922,7 +923,7 @@ async def export_transactions(interaction: discord.Interaction):
     writer.writeheader()
     for row in rows:
         writer.writerow({
-            "date": row["created_at"][:10],
+            "date": row["created_at"][:10] if row["created_at"] else "Unknown",
             "type": row["type"],
             "amount": row["amount"],
             "category": row["category"],
