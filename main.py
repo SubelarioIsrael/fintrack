@@ -1018,13 +1018,13 @@ async def on_ready():
 @commands.is_owner()
 async def sync_commands(ctx: commands.Context):
     """Owner-only: instantly sync slash commands to this guild and clear global duplicates."""
-    # Clear and re-sync global commands (removes the duplicate global set)
-    client.tree.clear_commands(guild=None)
-    await client.tree.sync()
-    # Push all commands to this guild for instant availability
+    # Copy commands to guild FIRST (while they're still in memory), then sync instantly
     client.tree.copy_global_to(guild=ctx.guild)
     synced = await client.tree.sync(guild=ctx.guild)
-    await ctx.send(f"✅ Synced {len(synced)} command(s) to **{ctx.guild.name}** and cleared global duplicates.", delete_after=10)
+    # Now clear the global set to remove duplicates (propagates within ~1 hour)
+    client.tree.clear_commands(guild=None)
+    await client.tree.sync()
+    await ctx.send(f"✅ Synced {len(synced)} command(s) to **{ctx.guild.name}**. Global duplicates will vanish within ~1 hour.", delete_after=15)
 
 
 @tasks.loop(hours=24)
