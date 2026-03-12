@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 from supabase import create_client
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -20,8 +20,8 @@ supabase = create_client(url, key)
 
 def month_start() -> str:
     """ISO timestamp for the first moment of the current month (UTC)."""
-    now = datetime.utcnow()
-    return datetime(now.year, now.month, 1).isoformat()
+    now = datetime.now(timezone.utc)
+    return datetime(now.year, now.month, 1, tzinfo=timezone.utc).isoformat()
 
 
 def progress_bar(spent: float, limit: float, length: int = 10) -> str:
@@ -306,7 +306,7 @@ async def _send_balance(ctx_or_interaction, ephemeral: bool = False):
     total_income = sum(float(r["amount"]) for r in (income_resp.data or []))
     total_expense = sum(float(r["amount"]) for r in (expense_resp.data or []))
     balance_val = total_income - total_expense
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     color = discord.Color.green() if balance_val >= 0 else discord.Color.red()
     embed = discord.Embed(title=f"📊 {now.strftime('%B %Y')} Summary", color=color)
     embed.add_field(name="Income", value=f"₱{total_income:.2f}", inline=True)
@@ -395,7 +395,7 @@ async def _send_budgets(ctx_or_interaction, ephemeral: bool = False):
             await ctx_or_interaction.send(msg)
         return
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     embed = discord.Embed(title=f"🎯 Budgets — {now.strftime('%B %Y')}", color=discord.Color.gold())
     for b in budgets:
         cat = b["category"]
