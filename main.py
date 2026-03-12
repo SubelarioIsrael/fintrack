@@ -434,6 +434,280 @@ class DeleteView(discord.ui.View):
         self.add_item(DeleteSelect(rows))
 
 
+# ---------------------------------------------------------------------------
+# Budget delete
+# ---------------------------------------------------------------------------
+
+class BudgetDeleteSelect(discord.ui.Select):
+    def __init__(self, rows):
+        self.rows = rows
+        options = [
+            discord.SelectOption(
+                label=f"{r['category']} — ₱{float(r['monthly_limit']):.2f}/mo",
+                value=r["id"],
+            )
+            for r in rows
+        ]
+        super().__init__(placeholder="Pick a budget to delete…", options=options, min_values=1, max_values=1)
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        row = next(r for r in self.rows if r["id"] == self.values[0])
+        try:
+            supabase.table("budgets").delete().eq("id", row["id"]).execute()
+            embed = discord.Embed(title="🗑️ Budget Deleted", color=discord.Color.orange())
+            embed.add_field(name="Category", value=row["category"], inline=True)
+            embed.add_field(name="Was", value=f"₱{float(row['monthly_limit']):.2f}/mo", inline=True)
+            await interaction.edit_original_response(embed=embed, view=None)
+        except Exception as e:
+            print(e)
+            await interaction.followup.send("Failed to delete budget.", ephemeral=True)
+
+
+class BudgetDeleteView(discord.ui.View):
+    def __init__(self, rows):
+        super().__init__(timeout=60)
+        self.add_item(BudgetDeleteSelect(rows))
+
+
+# ---------------------------------------------------------------------------
+# Goal delete / edit
+# ---------------------------------------------------------------------------
+
+class GoalDeleteSelect(discord.ui.Select):
+    def __init__(self, rows):
+        self.rows = rows
+        options = [
+            discord.SelectOption(
+                label=f"{r['name']} — ₱{float(r['current_amount']):.2f} / ₱{float(r['target_amount']):.2f}",
+                value=r["id"],
+            )
+            for r in rows
+        ]
+        super().__init__(placeholder="Pick a goal to delete…", options=options, min_values=1, max_values=1)
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        row = next(r for r in self.rows if r["id"] == self.values[0])
+        try:
+            supabase.table("goals").delete().eq("id", row["id"]).execute()
+            embed = discord.Embed(title="🗑️ Goal Deleted", color=discord.Color.orange())
+            embed.add_field(name="Goal", value=row["name"], inline=True)
+            embed.add_field(name="Target Was", value=f"₱{float(row['target_amount']):.2f}", inline=True)
+            await interaction.edit_original_response(embed=embed, view=None)
+        except Exception as e:
+            print(e)
+            await interaction.followup.send("Failed to delete goal.", ephemeral=True)
+
+
+class GoalDeleteView(discord.ui.View):
+    def __init__(self, rows):
+        super().__init__(timeout=60)
+        self.add_item(GoalDeleteSelect(rows))
+
+
+class GoalEditSelect(discord.ui.Select):
+    def __init__(self, rows):
+        self.rows = rows
+        options = [
+            discord.SelectOption(
+                label=f"{r['name']} — ₱{float(r['current_amount']):.2f} / ₱{float(r['target_amount']):.2f}",
+                value=r["id"],
+            )
+            for r in rows
+        ]
+        super().__init__(placeholder="Pick a goal to edit…", options=options, min_values=1, max_values=1)
+
+    async def callback(self, interaction: discord.Interaction):
+        row = next(r for r in self.rows if r["id"] == self.values[0])
+        await interaction.response.send_modal(GoalEditModal(row))
+
+
+class GoalEditView(discord.ui.View):
+    def __init__(self, rows):
+        super().__init__(timeout=60)
+        self.add_item(GoalEditSelect(rows))
+
+
+class GoalEditModal(discord.ui.Modal, title="Edit Savings Goal"):
+    def __init__(self, row: dict):
+        super().__init__()
+        self.row_id = row["id"]
+        self.name_input = discord.ui.TextInput(
+            label="Goal Name",
+            default=row["name"],
+            required=True,
+        )
+        self.target_input = discord.ui.TextInput(
+            label="Target Amount (₱)",
+            default=str(row["target_amount"]),
+            required=True,
+        )
+        self.current_input = discord.ui.TextInput(
+            label="Current Saved Amount (₱)",
+            default=str(row["current_amount"]),
+            required=True,
+        )
+        self.deadline_input = discord.ui.TextInput(
+            label="Deadline (YYYY-MM-DD, leave blank to clear)",
+            default=row.get("deadline") or "",
+            required=False,
+        )
+        self.add_item(self.name_input)
+        self.add_item(self.target_input)
+        self.add_item(self.current_input)
+        self.add_item(self.deadline_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            target_val = float(self.target_input.value)
+            current_val = float(self.current_input.value)
+        except ValueError:
+            await interaction.response.send_message("Invalid amount — enter numbers like `5000.00`.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        deadline_val = self.deadline_input.value.strip() or None
+        try:
+            supabase.table("goals").update({
+                "name": self.name_input.value,
+                "target_amount": target_val,
+                "current_amount": current_val,
+                "deadline": deadline_val,
+            }).eq("id", self.row_id).execute()
+            bar = progress_bar(current_val, target_val)
+            embed = discord.Embed(title="✏️ Goal Updated ✅", color=discord.Color.teal())
+            embed.add_field(name="Goal", value=self.name_input.value, inline=True)
+            embed.add_field(name="Target", value=f"₱{target_val:.2f}", inline=True)
+            embed.add_field(name="Progress", value=f"{bar}  ₱{current_val:.2f} / ₱{target_val:.2f}", inline=False)
+            if deadline_val:
+                embed.add_field(name="Deadline", value=deadline_val, inline=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        except Exception as e:
+            print(e)
+            await interaction.followup.send("Failed to update goal.", ephemeral=True)
+
+
+# ---------------------------------------------------------------------------
+# Recurring delete / edit
+# ---------------------------------------------------------------------------
+
+class RecurringDeleteSelect(discord.ui.Select):
+    def __init__(self, rows):
+        self.rows = rows
+        options = [
+            discord.SelectOption(
+                label=f"{r['type'].capitalize()} · {r['category']} · ₱{float(r['amount']):.2f} ({r['frequency']})"[:100],
+                description=(r["description"] or "")[:50],
+                value=r["id"],
+            )
+            for r in rows
+        ]
+        super().__init__(placeholder="Pick a recurring entry to delete…", options=options, min_values=1, max_values=1)
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        row = next(r for r in self.rows if r["id"] == self.values[0])
+        try:
+            supabase.table("recurring").delete().eq("id", row["id"]).execute()
+            embed = discord.Embed(title="🗑️ Recurring Entry Deleted", color=discord.Color.orange())
+            embed.add_field(name="Type", value=row["type"].capitalize(), inline=True)
+            embed.add_field(name="Amount", value=f"₱{float(row['amount']):.2f}", inline=True)
+            embed.add_field(name="Category", value=row["category"], inline=True)
+            embed.add_field(name="Frequency", value=row["frequency"].capitalize(), inline=True)
+            await interaction.edit_original_response(embed=embed, view=None)
+        except Exception as e:
+            print(e)
+            await interaction.followup.send("Failed to delete recurring entry.", ephemeral=True)
+
+
+class RecurringDeleteView(discord.ui.View):
+    def __init__(self, rows):
+        super().__init__(timeout=60)
+        self.add_item(RecurringDeleteSelect(rows))
+
+
+class RecurringEditSelect(discord.ui.Select):
+    def __init__(self, rows):
+        self.rows = rows
+        options = [
+            discord.SelectOption(
+                label=f"{r['type'].capitalize()} · {r['category']} · ₱{float(r['amount']):.2f} ({r['frequency']})"[:100],
+                description=(r["description"] or "")[:50],
+                value=r["id"],
+            )
+            for r in rows
+        ]
+        super().__init__(placeholder="Pick a recurring entry to edit…", options=options, min_values=1, max_values=1)
+
+    async def callback(self, interaction: discord.Interaction):
+        row = next(r for r in self.rows if r["id"] == self.values[0])
+        await interaction.response.send_modal(RecurringEditModal(row))
+
+
+class RecurringEditView(discord.ui.View):
+    def __init__(self, rows):
+        super().__init__(timeout=60)
+        self.add_item(RecurringEditSelect(rows))
+
+
+class RecurringEditModal(discord.ui.Modal, title="Edit Recurring Transaction"):
+    def __init__(self, row: dict):
+        super().__init__()
+        self.row_id = row["id"]
+        self.amount_input = discord.ui.TextInput(
+            label="Amount (₱)",
+            default=str(row["amount"]),
+            required=True,
+        )
+        self.category_input = discord.ui.TextInput(
+            label="Category",
+            default=row["category"],
+            required=True,
+        )
+        self.description_input = discord.ui.TextInput(
+            label="Description",
+            default=row["description"] or "",
+            required=True,
+        )
+        self.frequency_input = discord.ui.TextInput(
+            label="Frequency (weekly / monthly)",
+            default=row["frequency"],
+            required=True,
+        )
+        self.add_item(self.amount_input)
+        self.add_item(self.category_input)
+        self.add_item(self.description_input)
+        self.add_item(self.frequency_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        freq_val = self.frequency_input.value.strip().lower()
+        if freq_val not in ("weekly", "monthly"):
+            await interaction.response.send_message("Frequency must be `weekly` or `monthly`.", ephemeral=True)
+            return
+        try:
+            amount_val = float(self.amount_input.value)
+        except ValueError:
+            await interaction.response.send_message("Invalid amount — enter a number like `200.00`.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            supabase.table("recurring").update({
+                "amount": amount_val,
+                "category": self.category_input.value,
+                "description": self.description_input.value,
+                "frequency": freq_val,
+            }).eq("id", self.row_id).execute()
+            embed = discord.Embed(title="✏️ Recurring Entry Updated ✅", color=discord.Color.purple())
+            embed.add_field(name="Amount", value=f"₱{amount_val:.2f}", inline=True)
+            embed.add_field(name="Category", value=self.category_input.value, inline=True)
+            embed.add_field(name="Frequency", value=freq_val.capitalize(), inline=True)
+            embed.add_field(name="Description", value=self.description_input.value, inline=False)
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        except Exception as e:
+            print(e)
+            await interaction.followup.send("Failed to update recurring entry.", ephemeral=True)
+
+
 class MenuView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=120)
@@ -805,12 +1079,18 @@ async def help_command(interaction: discord.Interaction):
     embed.add_field(name='/history', value='Show your last 10 transactions.', inline=False)
     embed.add_field(name='/breakdown', value="Category % breakdown of this month's expenses.", inline=False)
     embed.add_field(name='/insights', value='Compare this month vs last month by category.', inline=False)
-    embed.add_field(name='/setbudget', value='Set a monthly spending limit for a category.', inline=False)
+    embed.add_field(name='/setbudget', value='Set (or update) a monthly spending limit for a category.', inline=False)
     embed.add_field(name='/budgets', value='View all budget limits with progress bars.', inline=False)
+    embed.add_field(name='/deletebudget', value='Delete a budget category via dropdown.', inline=False)
     embed.add_field(name='/setgoal', value='Create a savings goal with a target and deadline.', inline=False)
     embed.add_field(name='/goals', value='View all savings goals and progress.', inline=False)
     embed.add_field(name='/contribute', value='Add money toward a savings goal.', inline=False)
+    embed.add_field(name='/editgoal', value='Edit an existing savings goal via dropdown.', inline=False)
+    embed.add_field(name='/deletegoal', value='Delete a savings goal via dropdown.', inline=False)
     embed.add_field(name='/setrecurring', value='Add a recurring weekly/monthly transaction.', inline=False)
+    embed.add_field(name='/recurringlist', value='View all your recurring transactions.', inline=False)
+    embed.add_field(name='/editrecurring', value='Edit a recurring transaction via dropdown.', inline=False)
+    embed.add_field(name='/deleterecurring', value='Delete a recurring transaction via dropdown.', inline=False)
     embed.add_field(name='/delete', value='Delete a specific transaction via dropdown.', inline=False)
     embed.add_field(name='/export', value='Export all transactions as a CSV to your DMs.', inline=False)
     embed.add_field(name='/undo', value='Delete your most recent transaction.', inline=False)
@@ -956,6 +1236,142 @@ async def contribute(interaction: discord.Interaction):
 @client.tree.command(name="setrecurring", description="Add a recurring weekly/monthly transaction.")
 async def setrecurring(interaction: discord.Interaction):
     await interaction.response.send_modal(SetRecurringModal())
+
+
+@client.tree.command(name="recurringlist", description="View all your recurring transactions.")
+async def recurringlist(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    user_id = str(interaction.user.id)
+    try:
+        resp = supabase.table("recurring").select("*").eq("user_id", user_id).execute()
+    except Exception as e:
+        print(e)
+        await interaction.followup.send("Failed to fetch recurring transactions.", ephemeral=True)
+        return
+    rows = resp.data or []
+    if not rows:
+        await interaction.followup.send("No recurring transactions set. Use `/setrecurring` to add one.", ephemeral=True)
+        return
+    embed = discord.Embed(title="🔁 Recurring Transactions", color=discord.Color.purple())
+    for r in rows:
+        sign = "+" if r["type"] == "income" else "-"
+        last = f"Last run: {r['last_run']}" if r.get("last_run") else "Not run yet"
+        embed.add_field(
+            name=f"{r['type'].capitalize()} · {r['category']} · {sign}₱{float(r['amount']):.2f} ({r['frequency']})",
+            value=f"{r['description'] or '—'} · {last}",
+            inline=False,
+        )
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+
+@client.tree.command(name="editrecurring", description="Edit an existing recurring transaction.")
+async def editrecurring(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    user_id = str(interaction.user.id)
+    try:
+        resp = supabase.table("recurring").select("*").eq("user_id", user_id).execute()
+    except Exception as e:
+        print(e)
+        await interaction.followup.send("Failed to fetch recurring transactions.", ephemeral=True)
+        return
+    rows = resp.data or []
+    if not rows:
+        await interaction.followup.send("No recurring transactions to edit.", ephemeral=True)
+        return
+    embed = discord.Embed(
+        title="✏️ Edit Recurring Transaction",
+        description="Select an entry to edit:",
+        color=discord.Color.purple(),
+    )
+    await interaction.followup.send(embed=embed, view=RecurringEditView(rows), ephemeral=True)
+
+
+@client.tree.command(name="deleterecurring", description="Delete a recurring transaction.")
+async def deleterecurring(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    user_id = str(interaction.user.id)
+    try:
+        resp = supabase.table("recurring").select("*").eq("user_id", user_id).execute()
+    except Exception as e:
+        print(e)
+        await interaction.followup.send("Failed to fetch recurring transactions.", ephemeral=True)
+        return
+    rows = resp.data or []
+    if not rows:
+        await interaction.followup.send("No recurring transactions to delete.", ephemeral=True)
+        return
+    embed = discord.Embed(
+        title="🗑️ Delete Recurring Transaction",
+        description="Select an entry to remove:",
+        color=discord.Color.orange(),
+    )
+    await interaction.followup.send(embed=embed, view=RecurringDeleteView(rows), ephemeral=True)
+
+
+@client.tree.command(name="editgoal", description="Edit an existing savings goal.")
+async def editgoal(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    user_id = str(interaction.user.id)
+    try:
+        resp = supabase.table("goals").select("*").eq("user_id", user_id).execute()
+    except Exception as e:
+        print(e)
+        await interaction.followup.send("Failed to fetch goals.", ephemeral=True)
+        return
+    rows = resp.data or []
+    if not rows:
+        await interaction.followup.send("No goals to edit.", ephemeral=True)
+        return
+    embed = discord.Embed(
+        title="✏️ Edit Savings Goal",
+        description="Select a goal to edit:",
+        color=discord.Color.teal(),
+    )
+    await interaction.followup.send(embed=embed, view=GoalEditView(rows), ephemeral=True)
+
+
+@client.tree.command(name="deletegoal", description="Delete a savings goal.")
+async def deletegoal(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    user_id = str(interaction.user.id)
+    try:
+        resp = supabase.table("goals").select("*").eq("user_id", user_id).execute()
+    except Exception as e:
+        print(e)
+        await interaction.followup.send("Failed to fetch goals.", ephemeral=True)
+        return
+    rows = resp.data or []
+    if not rows:
+        await interaction.followup.send("No goals to delete.", ephemeral=True)
+        return
+    embed = discord.Embed(
+        title="🗑️ Delete Savings Goal",
+        description="Select a goal to remove:",
+        color=discord.Color.orange(),
+    )
+    await interaction.followup.send(embed=embed, view=GoalDeleteView(rows), ephemeral=True)
+
+
+@client.tree.command(name="deletebudget", description="Delete a monthly budget for a category.")
+async def deletebudget(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    user_id = str(interaction.user.id)
+    try:
+        resp = supabase.table("budgets").select("*").eq("user_id", user_id).execute()
+    except Exception as e:
+        print(e)
+        await interaction.followup.send("Failed to fetch budgets.", ephemeral=True)
+        return
+    rows = resp.data or []
+    if not rows:
+        await interaction.followup.send("No budgets to delete.", ephemeral=True)
+        return
+    embed = discord.Embed(
+        title="🗑️ Delete Budget",
+        description="Select a budget to remove:",
+        color=discord.Color.orange(),
+    )
+    await interaction.followup.send(embed=embed, view=BudgetDeleteView(rows), ephemeral=True)
 
 
 @client.tree.command(name="undo", description="Delete your most recent transaction.")
