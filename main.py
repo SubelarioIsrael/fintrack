@@ -303,7 +303,7 @@ class ContributeGoalModal(discord.ui.Modal, title="Contribute to a Goal"):
             )
             if not resp.data:
                 await interaction.response.send_message(
-                    f"No goal named **{self.goal_name.value}** found. Check your goals with `!goals`.",
+                    f"No goal named **{self.goal_name.value}** found. Check your goals with `/goals`.",
                     ephemeral=True,
                 )
                 return
@@ -391,33 +391,6 @@ class SetRecurringModal(discord.ui.Modal, title="Add Recurring Transaction"):
 # Button Views
 # ---------------------------------------------------------------------------
 
-class ExpenseView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=60)
-
-    @discord.ui.button(label="Fill in Expense", style=discord.ButtonStyle.red, emoji="💸")
-    async def open_expense_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(ExpenseModal())
-
-
-class IncomeView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=60)
-
-    @discord.ui.button(label="Fill in Income", style=discord.ButtonStyle.green, emoji="💰")
-    async def open_income_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(IncomeModal())
-
-
-class SetBudgetView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=60)
-
-    @discord.ui.button(label="Set Budget", style=discord.ButtonStyle.gray, emoji="🎯")
-    async def open_budget_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(SetBudgetModal())
-
-
 class DeleteSelect(discord.ui.Select):
     def __init__(self, rows):
         self.rows = rows
@@ -449,33 +422,6 @@ class DeleteView(discord.ui.View):
     def __init__(self, rows):
         super().__init__(timeout=60)
         self.add_item(DeleteSelect(rows))
-
-
-class SetGoalView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=60)
-
-    @discord.ui.button(label="Set Goal", style=discord.ButtonStyle.blurple, emoji="🎯")
-    async def open_goal_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(SetGoalModal())
-
-
-class ContributeView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=60)
-
-    @discord.ui.button(label="Contribute", style=discord.ButtonStyle.green, emoji="💰")
-    async def open_contribute_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(ContributeGoalModal())
-
-
-class SetRecurringView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=60)
-
-    @discord.ui.button(label="Add Recurring", style=discord.ButtonStyle.blurple, emoji="🔁")
-    async def open_recurring_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(SetRecurringModal())
 
 
 class MenuView(discord.ui.View):
@@ -622,7 +568,7 @@ async def _send_budgets(ctx_or_interaction, ephemeral: bool = False):
 
     budgets = budget_resp.data or []
     if not budgets:
-        msg = "No budgets set. Use `!setbudget` to create one."
+        msg = "No budgets set. Use `/setbudget` to create one."
         if is_ix:
             await ctx_or_interaction.response.send_message(msg, ephemeral=ephemeral)
         else:
@@ -805,7 +751,7 @@ async def _send_goals(ctx_or_interaction, ephemeral: bool = False):
         return
     goals = resp.data or []
     if not goals:
-        msg = "No goals set. Use `!setgoal` to create one."
+        msg = "No goals set. Use `/setgoal` to create one."
         if is_ix:
             await ctx_or_interaction.response.send_message(msg, ephemeral=ephemeral)
         else:
@@ -842,6 +788,7 @@ client = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 async def on_ready():
     print('FinTrack is ready to use!')
     print('------------------------------')
+    await client.tree.sync()
     if not process_recurring.is_running():
         process_recurring.start()
 
@@ -881,113 +828,101 @@ async def process_recurring():
 # Commands
 # ---------------------------------------------------------------------------
 
-@client.command()
-async def hello(ctx):
+@client.tree.command(name="hello", description="Greet the bot.")
+async def hello(interaction: discord.Interaction):
     embed = discord.Embed(
         title="Welcome to FinTrack! 👋",
         description=(
             "I'm your personal finance assistant.\n\n"
-            "Use `!menu` to open an interactive dashboard,\n"
-            "or type `!help` to see all available commands."
+            "Use `/menu` to open an interactive dashboard,\n"
+            "or type `/help` to see all available commands."
         ),
         color=discord.Color.blue()
     )
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
 
 
-@client.command(name='help')
-async def help_command(ctx):
+@client.tree.command(name="help", description="Show all available commands.")
+async def help_command(interaction: discord.Interaction):
     embed = discord.Embed(
         title='FinTrack — Command Guide',
-        description='Use `!menu` for a fully interactive dashboard with pop-up forms.',
+        description='Use `/menu` for a fully interactive dashboard with pop-up forms.',
         color=discord.Color.blue()
     )
-    embed.add_field(name='!menu', value='Open the interactive dashboard.', inline=False)
-    embed.add_field(name='!expense', value='Log an expense via pop-up form.', inline=False)
-    embed.add_field(name='!income', value='Log income via pop-up form.', inline=False)
-    embed.add_field(name='!balance', value="Show this month's income, expenses, and balance.", inline=False)
-    embed.add_field(name='!history', value='Show your last 10 transactions.', inline=False)
-    embed.add_field(name='!breakdown', value="Category % breakdown of this month's expenses.", inline=False)
-    embed.add_field(name='!insights', value='Compare this month vs last month by category.', inline=False)
-    embed.add_field(name='!setbudget', value='Set a monthly spending limit for a category.', inline=False)
-    embed.add_field(name='!budgets', value='View all budget limits with progress bars.', inline=False)
-    embed.add_field(name='!setgoal', value='Create a savings goal with a target and deadline.', inline=False)
-    embed.add_field(name='!goals', value='View all savings goals and progress.', inline=False)
-    embed.add_field(name='!contribute', value='Add money toward a savings goal.', inline=False)
-    embed.add_field(name='!setrecurring', value='Add a recurring weekly/monthly transaction.', inline=False)
-    embed.add_field(name='!delete', value='Delete a specific transaction via dropdown.', inline=False)
-    embed.add_field(name='!export', value='Export all transactions as a CSV to your DMs.', inline=False)
-    embed.add_field(name='!undo', value='Delete your most recent transaction.', inline=False)
-    embed.add_field(name='!hello', value='Greet the bot.', inline=False)
-    embed.add_field(name='!help', value='Show this help message.', inline=False)
-    await ctx.send(embed=embed)
+    embed.add_field(name='/menu', value='Open the interactive dashboard.', inline=False)
+    embed.add_field(name='/expense', value='Log an expense via pop-up form.', inline=False)
+    embed.add_field(name='/income', value='Log income via pop-up form.', inline=False)
+    embed.add_field(name='/balance', value="Show this month's income, expenses, and balance.", inline=False)
+    embed.add_field(name='/history', value='Show your last 10 transactions.', inline=False)
+    embed.add_field(name='/breakdown', value="Category % breakdown of this month's expenses.", inline=False)
+    embed.add_field(name='/insights', value='Compare this month vs last month by category.', inline=False)
+    embed.add_field(name='/setbudget', value='Set a monthly spending limit for a category.', inline=False)
+    embed.add_field(name='/budgets', value='View all budget limits with progress bars.', inline=False)
+    embed.add_field(name='/setgoal', value='Create a savings goal with a target and deadline.', inline=False)
+    embed.add_field(name='/goals', value='View all savings goals and progress.', inline=False)
+    embed.add_field(name='/contribute', value='Add money toward a savings goal.', inline=False)
+    embed.add_field(name='/setrecurring', value='Add a recurring weekly/monthly transaction.', inline=False)
+    embed.add_field(name='/delete', value='Delete a specific transaction via dropdown.', inline=False)
+    embed.add_field(name='/export', value='Export all transactions as a CSV to your DMs.', inline=False)
+    embed.add_field(name='/undo', value='Delete your most recent transaction.', inline=False)
+    embed.add_field(name='/hello', value='Greet the bot.', inline=False)
+    embed.add_field(name='/help', value='Show this help message.', inline=False)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-@client.command()
-async def menu(ctx):
+@client.tree.command(name="menu", description="Open the interactive FinTrack dashboard.")
+async def menu(interaction: discord.Interaction):
     embed = discord.Embed(
         title="FinTrack Dashboard",
         description="Choose an action below:",
         color=discord.Color.blurple()
     )
-    await ctx.send(embed=embed, view=MenuView())
+    await interaction.response.send_message(embed=embed, view=MenuView())
 
 
-@client.command()
-async def expense(ctx):
-    embed = discord.Embed(
-        description="Click the button below to open the expense form.",
-        color=discord.Color.red()
-    )
-    await ctx.send(embed=embed, view=ExpenseView())
+@client.tree.command(name="expense", description="Log an expense via pop-up form.")
+async def expense(interaction: discord.Interaction):
+    await interaction.response.send_modal(ExpenseModal())
 
 
-@client.command()
-async def income(ctx):
-    embed = discord.Embed(
-        description="Click the button below to open the income form.",
-        color=discord.Color.green()
-    )
-    await ctx.send(embed=embed, view=IncomeView())
+@client.tree.command(name="income", description="Log income via pop-up form.")
+async def income(interaction: discord.Interaction):
+    await interaction.response.send_modal(IncomeModal())
 
 
-@client.command()
-async def balance(ctx):
-    await _send_balance(ctx)
+@client.tree.command(name="balance", description="Show this month's income, expenses, and balance.")
+async def balance(interaction: discord.Interaction):
+    await _send_balance(interaction)
 
 
-@client.command()
-async def history(ctx):
-    await _send_history(ctx)
+@client.tree.command(name="history", description="Show your last 10 transactions.")
+async def history(interaction: discord.Interaction):
+    await _send_history(interaction)
 
 
-@client.command()
-async def setbudget(ctx):
-    embed = discord.Embed(
-        description="Click the button below to set a monthly budget for a category.",
-        color=discord.Color.gold()
-    )
-    await ctx.send(embed=embed, view=SetBudgetView())
+@client.tree.command(name="setbudget", description="Set a monthly spending limit for a category.")
+async def setbudget(interaction: discord.Interaction):
+    await interaction.response.send_modal(SetBudgetModal())
 
 
-@client.command()
-async def budgets(ctx):
-    await _send_budgets(ctx)
+@client.tree.command(name="budgets", description="View all budget limits with progress bars.")
+async def budgets(interaction: discord.Interaction):
+    await _send_budgets(interaction)
 
 
-@client.command()
-async def breakdown(ctx):
-    await _send_breakdown(ctx)
+@client.tree.command(name="breakdown", description="Category % breakdown of this month's expenses.")
+async def breakdown(interaction: discord.Interaction):
+    await _send_breakdown(interaction)
 
 
-@client.command()
-async def insights(ctx):
-    await _send_insights(ctx)
+@client.tree.command(name="insights", description="Compare this month vs last month by category.")
+async def insights(interaction: discord.Interaction):
+    await _send_insights(interaction)
 
 
-@client.command(name="delete")
-async def delete_transaction(ctx):
-    user_id = str(ctx.author.id)
+@client.tree.command(name="delete", description="Delete a specific transaction via dropdown.")
+async def delete_transaction(interaction: discord.Interaction):
+    user_id = str(interaction.user.id)
     try:
         resp = (
             supabase.table("transactions")
@@ -999,23 +934,23 @@ async def delete_transaction(ctx):
         )
     except Exception as e:
         print(e)
-        await ctx.send("Failed to fetch your transactions.")
+        await interaction.response.send_message("Failed to fetch your transactions.", ephemeral=True)
         return
     rows = resp.data or []
     if not rows:
-        await ctx.send("You have no transactions to delete.")
+        await interaction.response.send_message("You have no transactions to delete.", ephemeral=True)
         return
     embed = discord.Embed(
         title="🗑️ Delete a Transaction",
         description="Select a transaction from the dropdown below:",
         color=discord.Color.orange(),
     )
-    await ctx.send(embed=embed, view=DeleteView(rows))
+    await interaction.response.send_message(embed=embed, view=DeleteView(rows), ephemeral=True)
 
 
-@client.command(name="export")
-async def export_transactions(ctx):
-    user_id = str(ctx.author.id)
+@client.tree.command(name="export", description="Export all transactions as a CSV to your DMs.")
+async def export_transactions(interaction: discord.Interaction):
+    user_id = str(interaction.user.id)
     try:
         resp = (
             supabase.table("transactions")
@@ -1026,11 +961,11 @@ async def export_transactions(ctx):
         )
     except Exception as e:
         print(e)
-        await ctx.send("Failed to fetch your transactions.")
+        await interaction.response.send_message("Failed to fetch your transactions.", ephemeral=True)
         return
     rows = resp.data or []
     if not rows:
-        await ctx.send("No transactions to export.")
+        await interaction.response.send_message("No transactions to export.", ephemeral=True)
         return
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=["date", "type", "amount", "category", "description"])
@@ -1045,48 +980,37 @@ async def export_transactions(ctx):
         })
     output.seek(0)
     file = discord.File(fp=io.BytesIO(output.getvalue().encode()), filename="transactions.csv")
+    await interaction.response.defer(ephemeral=True)
     try:
-        await ctx.author.send("📎 Here's your transaction export:", file=file)
-        await ctx.send("✅ Sent your export to your DMs!")
+        await interaction.user.send("📎 Here's your transaction export:", file=file)
+        await interaction.followup.send("✅ Sent your export to your DMs!", ephemeral=True)
     except discord.Forbidden:
-        await ctx.send("❌ I couldn't DM you. Please enable DMs from server members.")
+        await interaction.followup.send("❌ I couldn't DM you. Please enable DMs from server members.", ephemeral=True)
 
 
-@client.command()
-async def setgoal(ctx):
-    embed = discord.Embed(
-        description="Click the button below to create a savings goal.",
-        color=discord.Color.teal(),
-    )
-    await ctx.send(embed=embed, view=SetGoalView())
+@client.tree.command(name="setgoal", description="Create a savings goal with a target and deadline.")
+async def setgoal(interaction: discord.Interaction):
+    await interaction.response.send_modal(SetGoalModal())
 
 
-@client.command()
-async def goals(ctx):
-    await _send_goals(ctx)
+@client.tree.command(name="goals", description="View all savings goals and progress.")
+async def goals(interaction: discord.Interaction):
+    await _send_goals(interaction)
 
 
-@client.command()
-async def contribute(ctx):
-    embed = discord.Embed(
-        description="Click the button below to contribute to a savings goal.",
-        color=discord.Color.teal(),
-    )
-    await ctx.send(embed=embed, view=ContributeView())
+@client.tree.command(name="contribute", description="Add money toward a savings goal.")
+async def contribute(interaction: discord.Interaction):
+    await interaction.response.send_modal(ContributeGoalModal())
 
 
-@client.command()
-async def setrecurring(ctx):
-    embed = discord.Embed(
-        description="Click the button below to add a recurring transaction.",
-        color=discord.Color.purple(),
-    )
-    await ctx.send(embed=embed, view=SetRecurringView())
+@client.tree.command(name="setrecurring", description="Add a recurring weekly/monthly transaction.")
+async def setrecurring(interaction: discord.Interaction):
+    await interaction.response.send_modal(SetRecurringModal())
 
 
-@client.command()
-async def undo(ctx):
-    user_id = str(ctx.author.id)
+@client.tree.command(name="undo", description="Delete your most recent transaction.")
+async def undo(interaction: discord.Interaction):
+    user_id = str(interaction.user.id)
     try:
         resp = (
             supabase.table("transactions")
@@ -1098,11 +1022,11 @@ async def undo(ctx):
         )
     except Exception as e:
         print(e)
-        await ctx.send("Failed to fetch your last transaction.")
+        await interaction.response.send_message("Failed to fetch your last transaction.", ephemeral=True)
         return
 
     if not resp.data:
-        await ctx.send("You have no transactions to undo.")
+        await interaction.response.send_message("You have no transactions to undo.", ephemeral=True)
         return
 
     row = resp.data[0]
@@ -1114,10 +1038,10 @@ async def undo(ctx):
         embed.add_field(name="Amount", value=f"{sign}₱{float(row['amount']):.2f}", inline=True)
         embed.add_field(name="Category", value=row["category"], inline=True)
         embed.add_field(name="Description", value=row["description"], inline=False)
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
     except Exception as e:
         print(e)
-        await ctx.send("Failed to delete the transaction.")
+        await interaction.response.send_message("Failed to delete the transaction.", ephemeral=True)
 
 
 # Minimal HTTP server so Render's free Web Service tier keeps the bot alive
