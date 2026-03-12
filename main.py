@@ -1010,7 +1010,6 @@ client = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 async def on_ready():
     print('FinTrack is ready to use!')
     print('------------------------------')
-    await client.tree.sync()
     if not process_recurring.is_running():
         process_recurring.start()
 
@@ -1018,10 +1017,14 @@ async def on_ready():
 @client.command(name="sync")
 @commands.is_owner()
 async def sync_commands(ctx: commands.Context):
-    """Owner-only: instantly sync slash commands to this guild."""
+    """Owner-only: instantly sync slash commands to this guild and clear global duplicates."""
+    # Clear and re-sync global commands (removes the duplicate global set)
+    client.tree.clear_commands(guild=None)
+    await client.tree.sync()
+    # Push all commands to this guild for instant availability
     client.tree.copy_global_to(guild=ctx.guild)
     synced = await client.tree.sync(guild=ctx.guild)
-    await ctx.send(f"✅ Synced {len(synced)} command(s) to **{ctx.guild.name}**.", delete_after=10)
+    await ctx.send(f"✅ Synced {len(synced)} command(s) to **{ctx.guild.name}** and cleared global duplicates.", delete_after=10)
 
 
 @tasks.loop(hours=24)
